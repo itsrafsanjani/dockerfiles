@@ -69,15 +69,11 @@ RUN usermod -u 1000 www-data
 RUN mkdir -p /var/www/html/public /var/www/html/logs \
     && chown -R www-data:www-data /var/www/html /usr/local/lsws
 
-# Configure PHP
 RUN echo "# Custom configurations" >> /usr/local/lsws/${LSPHP}/etc/php/${PHP_VERSION}/litespeed/php.ini && \
     echo "include_dir /usr/local/etc/php/custom-conf.d" >> /usr/local/lsws/${LSPHP}/etc/php/${PHP_VERSION}/litespeed/php.ini
 
 # Configure PHP to use msmtp
 RUN echo "sendmail_path = /usr/bin/msmtp -t" >> /usr/local/lsws/${LSPHP}/etc/php/${PHP_VERSION}/litespeed/php.ini
-
-# Copy error logging configuration
-COPY error-logging.ini expose.ini /usr/local/lsws/${LSPHP}/etc/php/${PHP_VERSION}/litespeed/conf.d/
 
 WORKDIR /var/www/html
 
@@ -92,15 +88,9 @@ RUN sed -i "s/lsphp[0-9]\+\/bin\/lsphp/${LSPHP}\/bin\/lsphp/" /usr/local/lsws/co
 RUN chown -R lsadm:lsadm /usr/local/lsws \
     && chmod 755 /usr/local/lsws/bin/*
 
-# Set environment variables
-ENV PAGER=less
-
 # Copy and set permissions for entrypoint script
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
-
-# Define volume
-VOLUME /var/www/html
 
 EXPOSE 80
 
