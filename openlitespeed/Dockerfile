@@ -11,7 +11,11 @@ ARG TARGETPLATFORM
 # Install necessary packages
 RUN apt-get update && apt-get install -y --no-install-recommends \
     wget curl cron less tzdata gnupg2 ca-certificates procps libatomic1 \
-    msmtp git \
+    msmtp git mysql-client \
+    ghostscript imagemagick libmagickwand-dev \
+    libfreetype6-dev libicu-dev libwebp-dev libpng-dev libzip-dev libssh2-1-dev \
+    lz4 libxpm-dev \
+    unzip \
     && rm -rf /var/lib/apt/lists/*
 
 # Download and install OpenLiteSpeed
@@ -35,8 +39,12 @@ RUN wget -O - https://repo.litespeed.sh | bash \
     ${LSPHP} ${LSPHP}-common ${LSPHP}-mysql \
     ${LSPHP}-opcache ${LSPHP}-curl ${LSPHP}-intl \
     ${LSPHP}-imagick ${LSPHP}-redis ${LSPHP}-igbinary \
-    ${LSPHP}-imap ${LSPHP}-ldap && \
-    ln -s /usr/local/lsws/$LSPHP/bin/php /usr/bin/php && \
+    ${LSPHP}-imap ${LSPHP}-ldap \
+    ${LSPHP}-bcmath ${LSPHP}-xml ${LSPHP}-soap \
+    ${LSPHP}-sqlite3 ${LSPHP}-zip ${LSPHP}-ftp \
+    ${LSPHP}-exif ${LSPHP}-fileinfo ${LSPHP}-sockets \
+    ${LSPHP}-tokenizer ${LSPHP}-ssh2 ${LSPHP}-apcu \
+    && ln -s /usr/local/lsws/$LSPHP/bin/php /usr/bin/php && \
     ln -s /usr/local/lsws/$LSPHP/etc/php/$PHP_VERSION/mods-available/ /usr/local/lsws/php-mods-available && \
     rm -rf /var/lib/apt/lists/* && \
     apt-get clean && apt-get autoremove -y
@@ -48,6 +56,12 @@ RUN wget -qO /usr/local/bin/composer https://getcomposer.org/download/latest-sta
     && chmod +x /usr/local/bin/wp \
     && echo "alias wp='wp --allow-root'" >> /root/.bashrc
 
+# Configure WP-CLI with additional packages
+RUN wp package install wp-cli/doctor-command:@stable --allow-root \
+    && mkdir -p /home/www-data/.wp-cli \
+    && mv ~/.wp-cli/packages /home/www-data/.wp-cli/ \
+    && chown -R www-data:www-data /home/www-data/.wp-cli
+
 # Set up www-data user
 RUN usermod -u 1000 www-data
 
@@ -55,11 +69,15 @@ RUN usermod -u 1000 www-data
 RUN mkdir -p /var/www/html/public /var/www/html/logs \
     && chown -R www-data:www-data /var/www/html /usr/local/lsws
 
+# Configure PHP
 RUN echo "# Custom configurations" >> /usr/local/lsws/${LSPHP}/etc/php/${PHP_VERSION}/litespeed/php.ini && \
     echo "include_dir /usr/local/etc/php/custom-conf.d" >> /usr/local/lsws/${LSPHP}/etc/php/${PHP_VERSION}/litespeed/php.ini
 
 # Configure PHP to use msmtp
 RUN echo "sendmail_path = /usr/bin/msmtp -t" >> /usr/local/lsws/${LSPHP}/etc/php/${PHP_VERSION}/litespeed/php.ini
+
+# Copy error logging configuration
+COPY error-logging.ini expose.ini /usr/local/lsws/${LSPHP}/etc/php/${PHP_VERSION}/litespeed/conf.d/
 
 WORKDIR /var/www/html
 
@@ -74,9 +92,15 @@ RUN sed -i "s/lsphp[0-9]\+\/bin\/lsphp/${LSPHP}\/bin\/lsphp/" /usr/local/lsws/co
 RUN chown -R lsadm:lsadm /usr/local/lsws \
     && chmod 755 /usr/local/lsws/bin/*
 
+# Set environment variables
+ENV PAGER=less
+
 # Copy and set permissions for entrypoint script
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
+
+# Define volume
+VOLUME /var/www/html
 
 EXPOSE 80
 
