@@ -35,16 +35,20 @@ RUN if [ "$TARGETPLATFORM" = "linux/amd64" ]; then \
 
 # Install LiteSpeed repository and PHP
 RUN wget -O - https://repo.litespeed.sh | bash \
+    && echo "deb http://rpms.litespeedtech.com/debian/ jammy main" > /etc/apt/sources.list.d/litespeed.list \
+    && wget -O /etc/apt/trusted.gpg.d/litespeed.gpg http://rpms.litespeedtech.com/debian/lst_repo.gpg \
     && apt-get update && apt-get install -y --no-install-recommends \
-    ${LSPHP} ${LSPHP}-common ${LSPHP}-mysql \
-    ${LSPHP}-opcache ${LSPHP}-curl ${LSPHP}-intl \
-    ${LSPHP}-imagick ${LSPHP}-redis ${LSPHP}-igbinary \
-    ${LSPHP}-imap ${LSPHP}-ldap \
-    ${LSPHP}-bcmath ${LSPHP}-xml ${LSPHP}-soap \
-    ${LSPHP}-sqlite3 ${LSPHP}-zip ${LSPHP}-ftp \
-    ${LSPHP}-exif ${LSPHP}-fileinfo ${LSPHP}-sockets \
-    ${LSPHP}-tokenizer ${LSPHP}-ssh2 ${LSPHP}-apcu \
-    && ln -s /usr/local/lsws/$LSPHP/bin/php /usr/bin/php && \
+    ${LSPHP} ${LSPHP}-common \
+    ${LSPHP}-mysql ${LSPHP}-opcache \
+    ${LSPHP}-curl ${LSPHP}-intl \
+    ${LSPHP}-imagick ${LSPHP}-redis \
+    ${LSPHP}-igbinary ${LSPHP}-imap \
+    ${LSPHP}-ldap ${LSPHP}-pgsql \
+    ${LSPHP}-sqlite3 ${LSPHP}-tidy \
+    ${LSPHP}-apcu ${LSPHP}-memcached \
+    ${LSPHP}-pear ${LSPHP}-snmp \
+    ${LSPHP}-msgpack && \
+    ln -s /usr/local/lsws/$LSPHP/bin/php /usr/bin/php && \
     ln -s /usr/local/lsws/$LSPHP/etc/php/$PHP_VERSION/mods-available/ /usr/local/lsws/php-mods-available && \
     rm -rf /var/lib/apt/lists/* && \
     apt-get clean && apt-get autoremove -y
